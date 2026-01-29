@@ -104,13 +104,17 @@ Open your browser and visit:
 ## 📸 Screenshots
 
 | User Dashboard | Admin Panel |
-| --- | --- |
+| --- |
 | <img width="1916" height="891" alt="image" src="https://github.com/user-attachments/assets/d971c350-8c21-4f3c-b7f9-076792d466b9" /> | 
+| Admin Panel |
+| --- |
 | <img width="1918" height="894" alt="image" src="https://github.com/user-attachments/assets/e07f40a5-810c-46d4-969d-408e191ba37b" /> |
 
-| Invoice View | Prescription Upload |
-| --- | --- |
+| Invoice View |
+| --- |
 | <img width="1896" height="901" alt="image" src="https://github.com/user-attachments/assets/ca2d6bed-0fad-4456-b476-64cce5d5d9a2" /> | 
+| Prescription Upload |
+| --- |
 | <img width="1919" height="875" alt="image" src="https://github.com/user-attachments/assets/1103b41e-f8dc-4f55-ad4c-87b933e304db" /> |
 
 ---
