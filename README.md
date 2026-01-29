@@ -103,7 +103,7 @@ Open your browser and visit:
 
 ## 📸 Screenshots
 
-| User Dashboard | Admin Panel |
+| User Dashboard |
 | --- |
 | <img width="1916" height="891" alt="image" src="https://github.com/user-attachments/assets/d971c350-8c21-4f3c-b7f9-076792d466b9" /> | 
 | Admin Panel |
