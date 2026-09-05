@@ -388,6 +388,70 @@ LOCK TABLES `users` WRITE;
 INSERT INTO `users` VALUES (1,'System Admin','admin@medivault.com','$2y$10$2bK2tUVwcYOPFZKh98zD6edIKuwPswK9p3mWH1lsW9Cl7i6tMWcgm','admin','01700112233','Dhaka HQ','2026-01-14 08:10:21'),(2,'Rahim Ahmed','rahim@email.com','hash_staff1','pharmacist','01800112233','Dhaka Branch','2026-01-14 08:10:21'),(3,'Sultana Akter','sultana@email.com','hash_staff2','pharmacist','01900112233','Dhaka Branch','2026-01-14 08:10:21'),(4,'Kamal Hossain','kamal@gmail.com','hash_p1','patient','01711111111','Uttara, Dhaka','2026-01-14 08:10:21'),(5,'Abir Hasan','abir@gmail.com','hash_p2','patient','01722222222','Banani, Dhaka','2026-01-14 08:10:21'),(6,'Mofizul Islam',NULL,NULL,'walk-in','01733333333','Mirpur, Dhaka','2026-01-14 08:10:21'),(7,'Laila Begum',NULL,NULL,'walk-in','01744444444','Savar, Dhaka','2026-01-14 08:10:21'),(8,'Sonia Mirza','sonia@gmail.com','hash_p5','patient','01755555555','Chittagong','2026-01-14 08:10:21'),(9,'Tanvir Ahmed',NULL,NULL,'walk-in','01766666666','Narayanganj','2026-01-14 08:10:21'),(10,'Anika Tabassum','anika@gmail.com','hash_p7','patient','01777777777','Khulna','2026-01-14 08:10:21'),(11,'Badhon Saha','badhon4863@gmail.com','$2y$10$afsbqdMi7lMaKWvL1cxPpON5q7TmGzd3E5yRVNbs8PQXOORe8xif.','patient','01735414228','Khulna','2026-01-18 18:22:35'),(12,'Topu','tpu@hello.com','$2y$10$jv82ve70pDzGVydyPs4wKuO57RmbZcKH5P4Tp616hhoNTAvoGoRne','patient','01735414229','Khulna','2026-01-18 18:32:13'),(13,'No','no@gmail.com','$2y$10$Tzoh/H3coIJ.I0w.TrpXEeWtFuIzzacwEFAhcfQ3B4iuUSe/EX2ea','patient','01777777777','Dhaka','2026-01-28 06:30:53'),(14,'Abc','abc@gmail.com','$2y$10$Sg/eANuR3u.JHhQb8srJS.1o/OvIFq7IOiVGDIayt4ewEu69dPve.','patient','01234567891','Dhaka','2026-01-28 06:41:24');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `appointments`
+--
+
+DROP TABLE IF EXISTS `appointments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `appointments` (
+  `appointment_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `doctor_name` varchar(100) NOT NULL,
+  `appointment_date` date NOT NULL,
+  `appointment_time` time NOT NULL,
+  `notes` text,
+  `status` enum('Pending','Approved','Completed','Cancelled') DEFAULT 'Pending',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`appointment_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `appointments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `appointments`
+--
+
+LOCK TABLES `appointments` WRITE;
+/*!40000 ALTER TABLE `appointments` DISABLE KEYS */;
+INSERT INTO `appointments` VALUES (1,11,'Dr. Rahman','2026-02-05','10:30:00','Follow-up for fever and medication review.','Approved','2026-01-29 06:00:00');
+/*!40000 ALTER TABLE `appointments` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `support_tickets`
+--
+
+DROP TABLE IF EXISTS `support_tickets`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `support_tickets` (
+  `ticket_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `subject` varchar(150) NOT NULL,
+  `category` varchar(50) NOT NULL DEFAULT 'General',
+  `priority` enum('Low','Medium','High') DEFAULT 'Medium',
+  `message` text NOT NULL,
+  `status` enum('Open','In Progress','Resolved','Closed') DEFAULT 'Open',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ticket_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `support_tickets_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `support_tickets`
+--
+
+LOCK TABLES `support_tickets` WRITE;
+/*!40000 ALTER TABLE `support_tickets` DISABLE KEYS */;
+INSERT INTO `support_tickets` VALUES (1,11,'Order delivery delay','Order','High','The medicine delivery is delayed beyond the expected date. Please update me on the status.','Open','2026-01-29 07:00:00');
+/*!40000 ALTER TABLE `support_tickets` ENABLE KEYS */;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

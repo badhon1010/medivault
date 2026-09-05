@@ -62,23 +62,27 @@ $orders = $stmt->fetchAll();
 
         <?php if (count($orders) > 0): ?>
             <div class="space-y-6">
-                <?php foreach ($orders as $order): ?>
-                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-transparent hover:shadow-xl transition-all border-l-8 
-                        <?= $order['order_status'] == 'Pending' ? 'border-l-orange-400' : 
-                           ($order['order_status'] == 'Confirmed' ? 'border-l-blue-500' : 
-                           ($order['order_status'] == 'Delivered' ? 'border-l-green-500' : 'border-l-red-500')) ?>">
-                        
+                                <?php foreach ($orders as $order): ?>
+                    <?php
+                        $statusStyles = [
+                            'Pending' => ['border' => 'border-l-orange-400', 'badge' => 'bg-orange-100 text-orange-600'],
+                            'Confirmed' => ['border' => 'border-l-blue-500', 'badge' => 'bg-blue-100 text-blue-600'],
+                            'Packed' => ['border' => 'border-l-violet-500', 'badge' => 'bg-violet-100 text-violet-600'],
+                            'Shipped' => ['border' => 'border-l-sky-500', 'badge' => 'bg-sky-100 text-sky-600'],
+                            'Delivered' => ['border' => 'border-l-green-500', 'badge' => 'bg-green-100 text-green-600'],
+                            'Cancelled' => ['border' => 'border-l-red-500', 'badge' => 'bg-red-100 text-red-600'],
+                        ];
+                        $currentStatus = $order['order_status'] ?? 'Pending';
+                        $statusOrder = ['Pending', 'Confirmed', 'Packed', 'Shipped', 'Delivered'];
+                        $statusIndex = in_array($currentStatus, $statusOrder, true) ? array_search($currentStatus, $statusOrder, true) : -1;
+                    ?>
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-transparent hover:shadow-xl transition-all border-l-8 <?= $statusStyles[$currentStatus]['border'] ?? 'border-l-gray-400' ?>">
                         <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-                            
                             <div class="w-full md:w-1/3 text-center md:text-left">
                                 <div class="flex items-center gap-3 justify-center md:justify-start mb-1">
                                     <h3 class="text-xl font-black text-slate-800">Order #<?= $order['order_id'] ?></h3>
-                                    
-                                    <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider 
-                                        <?= $order['order_status'] == 'Pending' ? 'bg-orange-100 text-orange-600' : 
-                                           ($order['order_status'] == 'Confirmed' ? 'bg-blue-100 text-blue-600' : 
-                                           ($order['order_status'] == 'Delivered' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600')) ?>">
-                                        <?= $order['order_status'] ?>
+                                    <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider <?= $statusStyles[$currentStatus]['badge'] ?? 'bg-gray-100 text-gray-600' ?>">
+                                        <?= $currentStatus ?>
                                     </span>
                                 </div>
                                 <p class="text-xs font-bold text-gray-400">
@@ -92,29 +96,54 @@ $orders = $stmt->fetchAll();
                             </div>
 
                             <div class="w-full md:w-1/3 flex flex-col items-center md:items-end gap-3 justify-center">
-                                
                                 <div class="flex items-center gap-4">
                                     <a href="invoice.php?id=<?= $order['order_id'] ?>" class="text-blue-500 hover:text-blue-700 font-bold text-xs uppercase underline underline-offset-4 decoration-2 transition-all">
                                         <i class="fas fa-file-invoice mr-1"></i> Invoice
                                     </a>
 
-                                    <?php if ($order['order_status'] == 'Pending'): ?>
+                                    <?php if ($currentStatus == 'Pending'): ?>
                                         <form method="POST" onsubmit="return confirm('Are you sure you want to cancel this order?');">
                                             <input type="hidden" name="order_id" value="<?= $order['order_id'] ?>">
                                             <button type="submit" name="cancel_order" class="bg-red-50 text-red-500 px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-red-500 hover:text-white transition-all shadow-sm flex items-center gap-2">
                                                 <i class="fas fa-times"></i> Cancel Order
                                             </button>
                                         </form>
-                                    <?php elseif ($order['order_status'] == 'Cancelled'): ?>
+                                    <?php elseif ($currentStatus == 'Cancelled'): ?>
                                         <span class="text-sm font-bold text-gray-300 italic">Cancelled</span>
                                     <?php else: ?>
                                         <span class="text-sm font-bold text-gray-300 italic">Processing / Cannot Cancel</span>
                                     <?php endif; ?>
                                 </div>
-
                             </div>
-
                         </div>
+
+                        <?php if ($currentStatus == 'Cancelled'): ?>
+                            <div class="mt-6 rounded-2xl bg-red-50 border border-red-100 px-4 py-3 text-sm font-bold text-red-600">
+                                This order was cancelled and cannot continue through the fulfillment process.
+                            </div>
+                        <?php else: ?>
+                            <div class="mt-8">
+                                <div class="flex flex-wrap items-center gap-2 md:gap-4">
+                                    <?php foreach ($statusOrder as $stepIndex => $step): ?>
+                                        <?php
+                                            $isDone = $stepIndex <= $statusIndex;
+                                            $isCurrent = $step === $currentStatus;
+                                        ?>
+                                        <div class="flex-1 min-w-[120px]">
+                                            <div class="flex items-center">
+                                                <span class="w-3 h-3 rounded-full <?= $isDone ? 'bg-teal-500' : 'bg-gray-200' ?>"></span>
+                                                <?php if ($stepIndex < count($statusOrder) - 1): ?>
+                                                    <span class="h-px flex-1 <?= $isDone ? 'bg-teal-500' : 'bg-gray-200' ?>"></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <p class="mt-2 text-[10px] font-black uppercase tracking-wider <?= $isCurrent ? 'text-slate-700' : 'text-gray-400' ?>">
+                                                <?= $step ?>
+                                            </p>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -129,3 +158,6 @@ $orders = $stmt->fetchAll();
 
 </body>
 </html>
+
+
+
