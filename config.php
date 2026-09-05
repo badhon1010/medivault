@@ -1,10 +1,21 @@
 <?php
 session_start();
-$host = 'localhost';
-$db   = 'medivault';
-$user = 'root'; 
-$pass = '1234'; 
-$charset = 'utf8mb4';
+
+function medivault_env(string $key, string $default = ''): string
+{
+    $value = getenv($key);
+    if ($value === false || $value === '') {
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? $default;
+    }
+
+    return (string) $value;
+}
+
+$host = medivault_env('DB_HOST', 'localhost');
+$db   = medivault_env('DB_NAME', 'medivault');
+$user = medivault_env('DB_USER', 'root');
+$pass = medivault_env('DB_PASS', '1234');
+$charset = medivault_env('DB_CHARSET', 'utf8mb4');
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 $options = [

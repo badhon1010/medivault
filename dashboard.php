@@ -17,6 +17,7 @@ $query = "SELECT m.*, SUM(b.quantity_instock) as total_available,
 $medicines = $pdo->query($query)->fetchAll();
 
 $interactions = $pdo->query("SELECT * FROM drug_interactions")->fetchAll(PDO::FETCH_ASSOC);
+$categories = $pdo->query("SELECT * FROM categories ORDER BY category_name ASC")->fetchAll();
 $batches = $pdo->query("SELECT * FROM inventory_batches WHERE quantity_instock > 0 AND expiry_date >= CURDATE() ORDER BY expiry_date ASC")->fetchAll();
 $batch_map = [];
 foreach($batches as $b) { $batch_map[$b['medicine_id']][] = $b; }
@@ -70,12 +71,20 @@ $purchaseHistory = $stmtHistory->fetchAll(PDO::FETCH_COLUMN);
                     <span class="text-2xl font-bold text-slate-800 tracking-tight">Medi<span class="text-arogga">Vault</span></span>
                 </a>
 
-                <div class="hidden md:flex flex-1 max-w-xl mx-8 relative group">
-                    <input type="text" id="searchInput" placeholder="Search medicines..." 
-                           class="w-full pl-5 pr-12 py-3 bg-gray-100 border border-transparent rounded-full focus:ring-2 focus:ring-teal-500 focus:bg-white focus:border-teal-500 transition-all duration-300 text-sm font-medium outline-none shadow-sm group-hover:shadow-md">
-                    <button class="absolute right-2 top-1.5 bg-arogga text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-teal-700 hover:scale-110 transition-all duration-300 shadow-sm">
-                        <i class="fas fa-search text-xs"></i>
-                    </button>
+                <div class="hidden md:flex flex-1 max-w-2xl mx-8 items-center gap-3 relative group">
+                    <div class="flex-1 relative">
+                        <input type="text" id="searchInput" placeholder="Search medicines..." 
+                               class="w-full pl-5 pr-12 py-3 bg-gray-100 border border-transparent rounded-full focus:ring-2 focus:ring-teal-500 focus:bg-white focus:border-teal-500 transition-all duration-300 text-sm font-medium outline-none shadow-sm group-hover:shadow-md">
+                        <button class="absolute right-2 top-1.5 bg-arogga text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-teal-700 hover:scale-110 transition-all duration-300 shadow-sm">
+                           <i class="fas fa-search text-xs"></i>
+                        </button>
+                    </div>
+                    <select id="categoryFilter" class="bg-gray-100 border border-transparent rounded-full px-4 py-3 text-sm font-medium text-slate-600 outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white focus:border-teal-500 transition-all duration-300 shadow-sm">
+                        <option value="">All categories</option>
+                        <?php foreach ($categories as $category): ?>
+                           <option value="<?= (int) $category['category_id'] ?>"><?= htmlspecialchars($category['category_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
                 <div class="flex items-center gap-6">
@@ -88,6 +97,12 @@ $purchaseHistory = $stmtHistory->fetchAll(PDO::FETCH_COLUMN);
                         </a>
                         <a href="order_history.php" class="hover:text-arogga transition-colors flex items-center gap-1 hover:scale-105 transform duration-200">
                             <i class="fas fa-history"></i> Orders
+                        </a>
+                        <a href="my_appointments.php" class="hover:text-arogga transition-colors flex items-center gap-1 hover:scale-105 transform duration-200">
+                            <i class="fas fa-calendar-check"></i> Appointments
+                        </a>
+                        <a href="support_ticket.php" class="hover:text-arogga transition-colors flex items-center gap-1 hover:scale-105 transform duration-200">
+                            <i class="fas fa-headset"></i> Support
                         </a>
                         <a href="profile.php" class="hover:text-arogga transition-colors flex items-center gap-1 hover:scale-105 transform duration-200">
                             <i class="fas fa-user"></i> Profile
@@ -554,11 +569,19 @@ $purchaseHistory = $stmtHistory->fetchAll(PDO::FETCH_COLUMN);
             }
         }
 
-        document.getElementById('searchInput').addEventListener('input', function() {
-            fetch(`search_medicines.php?query=${this.value}`)
+        const categoryFilter = document.getElementById('categoryFilter');
+        const searchInput = document.getElementById('searchInput');
+
+        function refreshMedicines() {
+            const query = encodeURIComponent(searchInput.value.trim());
+            const categoryId = categoryFilter ? categoryFilter.value : '';
+            fetch(`search_medicines.php?query=${query}&category_id=${encodeURIComponent(categoryId)}`)
                 .then(res => res.text())
                 .then(data => { document.getElementById('medicineGrid').innerHTML = data; });
-        });
+        }
+
+        searchInput.addEventListener('input', refreshMedicines);
+        categoryFilter.addEventListener('change', refreshMedicines);
         
         function openReviewModal(id, name) {
             document.getElementById('modalMedId').value = id;

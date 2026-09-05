@@ -39,16 +39,18 @@ if (isset($_POST['login'])) {
         $stmt->execute([$email]);
         $user = $stmt->fetch();
         if ($user && password_verify($pass, $user['password_hash'])) {
+            session_regenerate_id(true);
+
             $_SESSION['user_id'] = $user['user_id'];
             $_SESSION['user_name'] = $user['full_name'];
             $_SESSION['role'] = $user['role'];
 
-            if (strtolower($user['role']) == 'admin') {
-                echo "<script>alert('Invalid email or password!'); window.location='index.php';</script>";
+            if (strtolower($user['role']) === 'admin') {
+                echo "<script>alert('Use the admin portal to sign in.'); window.location='admin_login.php';</script>";
                 exit();
-            } else {
-                header("Location: dashboard.php");
             }
+
+            header("Location: dashboard.php");
             exit();
         } else {
             echo "<script>alert('Invalid email or password!'); window.location='index.php';</script>";
@@ -139,7 +141,7 @@ if (isset($_POST['login'])) {
                         <label class="flex items-center text-slate-500 cursor-pointer">
                             <input type="checkbox" class="mr-2 rounded text-teal-600 focus:ring-teal-500"> Remember me
                         </label>
-                        <a href="#" class="text-arogga hover:underline">Forgot Password?</a>
+                        <a href="forgot_password.php" class="text-arogga hover:underline">Forgot Password?</a>
                     </div>
 
                     <button type="submit" name="login" class="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-arogga transition-all shadow-lg active:scale-95">
