@@ -12,12 +12,10 @@ if (empty($code)) {
 }
 
 try {
-    // 1. Check coupon from database
     $stmt = $pdo->prepare("SELECT * FROM coupons WHERE coupon_code = ?");
     $stmt->execute([$code]);
     $coupon = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // 2. Validate Coupon
     if (!$coupon) {
         echo json_encode(['success' => false, 'message' => 'Invalid Coupon Code!']);
         exit;
@@ -38,16 +36,11 @@ try {
         exit;
     }
 
-    $discountAmount = 0;
-    if (isset($coupon['discount_percent']) && $coupon['discount_percent'] > 0) {
-        $discountAmount = ($total * $coupon['discount_percent']) / 100;
-    } else {
-        $discountAmount = 0; 
-    }
+    $discountAmount = isset($coupon['discount_percent']) && $coupon['discount_percent'] > 0
+        ? ($total * $coupon['discount_percent']) / 100
+        : 0;
 
-    if ($discountAmount > $total) {
-        $discountAmount = $total;
-    }
+    $discountAmount = min($discountAmount, $total);
 
     echo json_encode([
         'success' => true,
