@@ -39,13 +39,65 @@ $coupons = $pdo->query("SELECT * FROM coupons ORDER BY expiry_date DESC")->fetch
 $reviews = $pdo->query("SELECT r.*, u.full_name, m.medicine_name FROM medicine_reviews r 
     JOIN users u ON r.user_id = u.user_id 
     JOIN medicines m ON r.medicine_id = m.medicine_id ORDER BY r.created_at DESC")->fetchAll();
+$appointments = $pdo->query("SELECT a.*, u.full_name, u.email FROM appointments a 
+    JOIN users u ON a.user_id = u.user_id 
+    ORDER BY a.appointment_date DESC, a.appointment_time DESC")->fetchAll();
+$supportTickets = $pdo->query("SELECT t.*, u.full_name, u.email FROM support_tickets t 
+    JOIN users u ON t.user_id = u.user_id 
+    ORDER BY t.created_at DESC")->fetchAll();
 $suppliers = $pdo->query("SELECT * FROM suppliers")->fetchAll();
 $categories = $pdo->query("SELECT * FROM categories")->fetchAll();
 $interactions = $pdo->query("SELECT di.*, m1.medicine_name as med1, m2.medicine_name as med2 
     FROM drug_interactions di 
     JOIN medicines m1 ON di.medicine_id_1 = m1.medicine_id 
     JOIN medicines m2 ON di.medicine_id_2 = m2.medicine_id")->fetchAll();
-$report = $pdo->query("SELECT COUNT(order_id) as total_orders, SUM(total_amount) as total_revenue FROM orders WHERE order_status = 'Delivered'")->fetch();
+$report = $pdo->query("SELECT COUNT(order_id) as total_orders, SUM(total_amount) as total_revenue, ROUND(AVG(total_amount), 2) as avg_order_value FROM orders WHERE order_status = 'Delivered'")->fetch();
+
+$pendingOrdersValue = $pdo->query("SELECT COALESCE(SUM(total_amount), 0) as pending_revenue, COUNT(order_id) as pending_orders FROM orders WHERE order_status IN ('Pending', 'Confirmed', 'Packed', 'Shipped')")->fetch();
+
+$monthlySales = $pdo->query("SELECT DATE_FORMAT(order_date, '%b %Y') as month_label, DATE_FORMAT(order_date, '%Y-%m') as month_key, SUM(total_amount) as revenue, COUNT(order_id) as orders_count FROM orders WHERE order_status = 'Delivered' GROUP BY DATE_FORMAT(order_date, '%Y-%m') ORDER BY order_date DESC LIMIT 6")->fetchAll();
+
+$topMedicines = $pdo->query("SELECT m.medicine_name, SUM(oi.quantity) as units_sold, SUM(oi.subtotal) as revenue FROM order_items oi JOIN medicines m ON m.medicine_id = oi.medicine_id JOIN orders o ON o.order_id = oi.order_id WHERE o.order_status = 'Delivered' GROUP BY m.medicine_id, m.medicine_name ORDER BY units_sold DESC, revenue DESC LIMIT 5")->fetchAll();
+
+$recentSales = $pdo->query("SELECT o.order_id, u.full_name, o.total_amount, o.order_date FROM orders o JOIN users u ON u.user_id = o.user_id WHERE o.order_status = 'Delivered' ORDER BY o.order_date DESC LIMIT 5")->fetchAll();
+
+$purchaseHistory = $pdo->query("SELECT sp.*, m.medicine_name, s.supplier_name
+    FROM stock_purchases sp
+    JOIN medicines m ON sp.medicine_id = m.medicine_id
+    LEFT JOIN suppliers s ON sp.supplier_id = s.supplier_id
+    ORDER BY sp.purchase_date DESC")->fetchAll();
+
+$lowStockMedicines = [];
+foreach ($inventory as $item) {
+    $stock = (int) ($item['total_stock'] ?? 0);
+    $minLevel = (int) ($item['min_stock_level'] ?? 0);
+    if ($stock <= $minLevel) {
+       $lowStockMedicines[] = $item;
+    }
+}
+
+$expiredBatches = [];
+$expiringSoonBatches = [];
+foreach ($all_batches as $batch) {
+    $qty = (int) ($batch['quantity_instock'] ?? 0);
+    if ($qty <= 0) {
+       continue;
+    }
+
+    $expiry = $batch['expiry_date'] ?? null;
+    if (!$expiry) {
+       continue;
+    }
+
+    $expiryTime = strtotime($expiry);
+    $today = strtotime('today');
+
+    if ($expiryTime < $today) {
+       $expiredBatches[] = $batch;
+    } elseif ($expiryTime <= strtotime('+30 days')) {
+       $expiringSoonBatches[] = $batch;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -67,6 +119,8 @@ $report = $pdo->query("SELECT COUNT(order_id) as total_orders, SUM(total_amount)
             <button onclick="showTab('stock')" class="tab-btn w-full text-left py-4 px-6 rounded-2xl flex items-center transition-all"><i class="fas fa-truck-loading mr-4 text-purple-400"></i> Add Stock</button>
             <button onclick="showTab('coup')" class="tab-btn w-full text-left py-4 px-6 rounded-2xl flex items-center transition-all"><i class="fas fa-ticket-alt mr-4 text-pink-400"></i> Coupons</button>
             <button onclick="showTab('rev')" class="tab-btn w-full text-left py-4 px-6 rounded-2xl flex items-center transition-all"><i class="fas fa-star mr-4 text-yellow-400"></i> Reviews</button>
+            <button onclick="showTab('apt')" class="tab-btn w-full text-left py-4 px-6 rounded-2xl flex items-center transition-all"><i class="fas fa-calendar-check mr-4 text-cyan-400"></i> Appointments</button>
+            <button onclick="showTab('sup')" class="tab-btn w-full text-left py-4 px-6 rounded-2xl flex items-center transition-all"><i class="fas fa-headset mr-4 text-violet-400"></i> Support</button>
             <button onclick="showTab('int')" class="tab-btn w-full text-left py-4 px-6 rounded-2xl flex items-center transition-all"><i class="fas fa-exclamation-triangle mr-4 text-red-400"></i> Conflicts</button>
             <button onclick="showTab('rep')" class="tab-btn w-full text-left py-4 px-6 rounded-2xl flex items-center transition-all"><i class="fas fa-chart-line mr-4 text-orange-400"></i> Reports</button>
         </nav>
@@ -80,6 +134,55 @@ $report = $pdo->query("SELECT COUNT(order_id) as total_orders, SUM(total_amount)
                 <h1 class="text-3xl font-black text-slate-800 uppercase tracking-tighter italic">Inventory Control</h1>
                 <button onclick="document.getElementById('addMedModal').classList.remove('hidden')" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase shadow-xl">+ New Medicine</button>
             </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-red-50 border border-red-200 rounded-2xl p-4">
+                    <div class="text-[10px] uppercase tracking-[0.2em] text-red-500 font-black">Low Stock</div>
+                    <div class="mt-2 text-2xl font-black text-red-700"><?= count($lowStockMedicines) ?></div>
+                    <div class="text-xs text-red-600 mt-1">Medicines at or below minimum stock</div>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                    <div class="text-[10px] uppercase tracking-[0.2em] text-amber-600 font-black">Expiring Soon</div>
+                    <div class="mt-2 text-2xl font-black text-amber-700"><?= count($expiringSoonBatches) ?></div>
+                    <div class="text-xs text-amber-700 mt-1">Batches expiring within 30 days</div>
+                </div>
+                <div class="bg-rose-50 border border-rose-200 rounded-2xl p-4">
+                    <div class="text-[10px] uppercase tracking-[0.2em] text-rose-600 font-black">Expired</div>
+                    <div class="mt-2 text-2xl font-black text-rose-700"><?= count($expiredBatches) ?></div>
+                    <div class="text-xs text-rose-700 mt-1">Already expired batches in stock</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <div class="bg-white p-8 rounded-[35px] border shadow-sm">
+                    <h2 class="text-xl font-black text-slate-800 uppercase tracking-tighter mb-6">Add New Medicine Category</h2>
+                    <form action="admin_actions.php" method="POST" class="space-y-4">
+                        <div>
+                            <label class="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em]">Category Name</label>
+                            <input type="text" name="category_name" placeholder="e.g. Vitamin, Antibiotic" required class="w-full p-4 mt-2 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm">
+                        </div>
+                        <button type="submit" name="add_category" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-black transition-all">Save Category</button>
+                    </form>
+                </div>
+
+                <div class="bg-white p-8 rounded-[35px] border shadow-sm">
+                    <h2 class="text-xl font-black text-slate-800 uppercase tracking-tighter mb-6">Available Categories</h2>
+                    <div class="space-y-3 max-h-72 overflow-y-auto pr-1">
+                        <?php foreach ($categories as $category): ?>
+                            <div class="flex items-center justify-between gap-3 bg-slate-50 rounded-2xl p-3">
+                                <span class="font-black text-slate-700 text-sm"><?= htmlspecialchars($category['category_name']) ?></span>
+                                <form action="admin_actions.php" method="POST" onsubmit="return confirm('Delete this category? It will only work if no medicine currently uses it.');">
+                                    <input type="hidden" name="category_id" value="<?= $category['category_id'] ?>">
+                                    <button type="submit" name="delete_category" class="text-red-400 hover:text-red-600 transition-all" title="Delete category">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white rounded-[35px] shadow-sm overflow-hidden border">
                 <table class="w-full text-left">
                     <thead class="bg-gray-50 border-b text-[10px] uppercase font-black text-slate-400 tracking-widest">
@@ -142,13 +245,24 @@ $report = $pdo->query("SELECT COUNT(order_id) as total_orders, SUM(total_amount)
             <h1 class="text-3xl font-black text-slate-800 uppercase italic tracking-tighter">Orders & Prescriptions</h1>
             <div class="grid grid-cols-1 gap-6">
                 <?php foreach($orders as $order): ?>
-                <div class="bg-white p-8 rounded-[40px] border flex flex-col md:flex-row justify-between items-center shadow-sm hover:shadow-xl transition-all border-l-8 <?= $order['order_status'] == 'Pending' ? 'border-l-orange-400' : 'border-l-green-500' ?>">
+                <?php
+                    $statusClasses = [
+                        'Pending' => 'border-l-orange-400 bg-orange-50 text-orange-600',
+                        'Confirmed' => 'border-l-blue-500 bg-blue-50 text-blue-600',
+                        'Packed' => 'border-l-violet-500 bg-violet-50 text-violet-600',
+                        'Shipped' => 'border-l-sky-500 bg-sky-50 text-sky-600',
+                        'Delivered' => 'border-l-green-500 bg-green-50 text-green-600',
+                        'Cancelled' => 'border-l-red-500 bg-red-50 text-red-600',
+                    ];
+                    $statusClass = $statusClasses[$order['order_status']] ?? 'border-l-gray-400 bg-gray-50 text-gray-600';
+                ?>
+                <div class="bg-white p-8 rounded-[40px] border flex flex-col md:flex-row justify-between items-center shadow-sm hover:shadow-xl transition-all border-l-8 <?= $statusClass ?>">
                     <div class="flex-1 cursor-pointer" onclick='showOrderItems(<?= $order['order_id'] ?>, <?= json_encode($order_details_map[$order['order_id']] ?? []) ?>)'>
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order #<?= $order['order_id'] ?> | <?= date('d M Y', strtotime($order['order_date'])) ?></p>
                         <h3 class="text-xl font-black text-slate-800 mt-1"><?= htmlspecialchars($order['full_name']) ?></h3>
                         <div class="flex items-center space-x-3 mt-2">
                             <span class="text-sm font-black text-green-600"><?= $order['total_amount'] ?> ৳</span>
-                            <span class="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black text-slate-500 uppercase"><?= $order['order_status'] ?></span>
+                            <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase <?= $statusClass ?>"><?= $order['order_status'] ?></span>
                         </div>
                     </div>
                     
@@ -167,6 +281,8 @@ $report = $pdo->query("SELECT COUNT(order_id) as total_orders, SUM(total_amount)
                             <select name="status" class="bg-gray-50 p-3 rounded-xl text-xs font-black border-none outline-none ring-1 ring-gray-100">
                                 <option value="Pending" <?= $order['order_status'] == 'Pending' ? 'selected' : '' ?>>Pending</option>
                                 <option value="Confirmed" <?= $order['order_status'] == 'Confirmed' ? 'selected' : '' ?>>Confirmed</option>
+                                <option value="Packed" <?= $order['order_status'] == 'Packed' ? 'selected' : '' ?>>Packed</option>
+                                <option value="Shipped" <?= $order['order_status'] == 'Shipped' ? 'selected' : '' ?>>Shipped</option>
                                 <option value="Delivered" <?= $order['order_status'] == 'Delivered' ? 'selected' : '' ?>>Delivered</option>
                                 <option value="Cancelled" <?= $order['order_status'] == 'Cancelled' ? 'selected' : '' ?>>Cancelled</option>
                             </select>
@@ -182,35 +298,97 @@ $report = $pdo->query("SELECT COUNT(order_id) as total_orders, SUM(total_amount)
 
         <div id="stock-tab" class="content-tab hidden space-y-8">
             <h1 class="text-3xl font-black text-slate-800 uppercase tracking-tighter italic">Supplier Stock Management</h1>
-            <div class="bg-white p-10 rounded-[40px] shadow-sm border max-w-2xl">
-                <form action="admin_stock.php" method="POST" class="space-y-6">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-[10px] font-black text-gray-400 uppercase ml-1">Select Medicine</label>
-                            <select name="medicine_id" class="w-full p-4 bg-gray-50 rounded-2xl outline-none border-none font-bold text-sm">
-                                <?php foreach($inventory as $m): ?><option value="<?= $m['medicine_id'] ?>"><?= $m['medicine_name'] ?></option><?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div><label class="text-[10px] font-black text-gray-400 uppercase ml-1">Supplier</label>
-                            <select name="supplier_id" class="w-full p-4 bg-gray-50 rounded-2xl outline-none border-none font-bold text-sm">
-                                <?php foreach($suppliers as $s): ?><option value="<?= $s['supplier_id'] ?>"><?= $s['supplier_name'] ?></option><?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="number" name="quantity" placeholder="Quantity (Units)" required class="p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
-                        
-                        <input type="number" step="0.01" name="purchase_price" placeholder="Purchase Price (Cost)" required class="p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
-                    </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="number" step="0.01" name="selling_price" placeholder="Selling Price (Unit Price)" required class="p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <div class="bg-white p-10 rounded-[40px] shadow-sm border">
+                    <h2 class="text-xl font-black text-slate-800 uppercase tracking-tighter mb-6">Add New Stock</h2>
+                    <form action="admin_stock.php" method="POST" class="space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-[10px] font-black text-gray-400 uppercase ml-1">Select Medicine</label>
+                                <select name="medicine_id" class="w-full p-4 bg-gray-50 rounded-2xl outline-none border-none font-bold text-sm">
+                                    <?php foreach($inventory as $m): ?><option value="<?= $m['medicine_id'] ?>"><?= $m['medicine_name'] ?></option><?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div><label class="text-[10px] font-black text-gray-400 uppercase ml-1">Supplier</label>
+                                <select name="supplier_id" class="w-full p-4 bg-gray-50 rounded-2xl outline-none border-none font-bold text-sm">
+                                    <?php foreach($suppliers as $s): ?><option value="<?= $s['supplier_id'] ?>"><?= $s['supplier_name'] ?></option><?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
                         
-                        <input type="date" name="expiry_date" required class="p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
-                    </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="number" name="quantity" placeholder="Quantity (Units)" required class="p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
+                            <input type="number" step="0.01" name="purchase_price" placeholder="Purchase Price (Cost)" required class="p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
+                        </div>
 
-                    <button type="submit" name="add_stock" class="w-full bg-green-600 text-white py-5 rounded-[25px] font-black uppercase tracking-widest hover:bg-green-700 shadow-xl shadow-green-100 transition-all">Update Stock</button>
-                </form>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="number" step="0.01" name="selling_price" placeholder="Selling Price (Unit Price)" required class="p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
+                            <input type="date" name="expiry_date" required class="p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
+                        </div>
+
+                        <button type="submit" name="add_stock" class="w-full bg-green-600 text-white py-5 rounded-[25px] font-black uppercase tracking-widest hover:bg-green-700 shadow-xl shadow-green-100 transition-all">Update Stock</button>
+                    </form>
+                </div>
+
+                <div class="bg-white p-10 rounded-[40px] shadow-sm border">
+                    <h2 class="text-xl font-black text-slate-800 uppercase tracking-tighter mb-6">New Supplier</h2>
+                    <form action="admin_actions.php" method="POST" class="space-y-4">
+                        <input type="text" name="supplier_name" placeholder="Supplier Name" required class="w-full p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="text" name="contact_person" placeholder="Contact Person" class="p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
+                            <input type="text" name="phone" placeholder="Phone" class="p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
+                        </div>
+                        <input type="email" name="email" placeholder="Email" class="w-full p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none">
+                        <textarea name="address" placeholder="Address" rows="3" class="w-full p-4 bg-gray-50 rounded-2xl font-bold text-sm border-none outline-none"></textarea>
+                        <button type="submit" name="add_supplier" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl">Save Supplier</button>
+                    </form>
+
+                    <div class="mt-8 border-t pt-6">
+                        <h3 class="text-sm font-black uppercase text-gray-400 mb-4">Supplier List</h3>
+                        <div class="space-y-3">
+                            <?php foreach($suppliers as $s): ?>
+                            <div class="flex justify-between items-center bg-gray-50 p-3 rounded-2xl">
+                                <div>
+                                    <p class="font-black text-slate-800 text-sm"><?= htmlspecialchars($s['supplier_name']) ?></p>
+                                    <p class="text-[10px] text-gray-500"><?= htmlspecialchars($s['phone'] ?: 'No phone') ?></p>
+                                </div>
+                                <form action="admin_actions.php" method="POST">
+                                    <input type="hidden" name="supplier_id" value="<?= $s['supplier_id'] ?>">
+                                    <button type="submit" name="delete_supplier" class="text-red-400 hover:text-red-600 text-xs" title="Delete supplier"><i class="fas fa-trash-alt"></i></button>
+                                </form>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-8 rounded-[40px] shadow-sm border">
+                <h2 class="text-xl font-black text-slate-800 uppercase tracking-tighter mb-6">Recent Purchase History</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-[10px] uppercase font-black text-slate-400 tracking-widest">
+                            <tr>
+                                <th class="p-4">Date</th>
+                                <th class="p-4">Medicine</th>
+                                <th class="p-4">Supplier</th>
+                                <th class="p-4 text-right">Qty</th>
+                                <th class="p-4 text-right">Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <?php foreach ($purchaseHistory as $purchase): ?>
+                            <tr class="hover:bg-gray-50">
+                                <td class="p-4 text-sm font-bold text-slate-700"><?= date('d M Y', strtotime($purchase['purchase_date'])) ?></td>
+                                <td class="p-4 font-bold text-slate-800"><?= htmlspecialchars($purchase['medicine_name']) ?></td>
+                                <td class="p-4 text-sm text-slate-600"><?= htmlspecialchars($purchase['supplier_name'] ?? 'Unknown Supplier') ?></td>
+                                <td class="p-4 text-right font-bold text-slate-700"><?= (int) $purchase['quantity'] ?></td>
+                                <td class="p-4 text-right font-bold text-green-600"><?= number_format((float) $purchase['purchase_price'], 2) ?> ৳</td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -287,17 +465,262 @@ $report = $pdo->query("SELECT COUNT(order_id) as total_orders, SUM(total_amount)
         </div>
 
         <div id="rep-tab" class="content-tab hidden space-y-8">
-            <h1 class="text-4xl font-black text-slate-800 uppercase tracking-tighter italic">Sales Report</h1>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="bg-gradient-to-br from-green-500 to-green-600 p-12 rounded-[50px] text-white shadow-2xl relative overflow-hidden">
-                    <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full"></div>
-                    <p class="text-xs font-black uppercase tracking-widest opacity-70">Total Revenue (Delivered)</p>
-                    <h2 class="text-6xl font-black mt-4"><?= number_format($report['total_revenue'], 2) ?> ৳</h2>
+            <div class="flex items-center justify-between gap-4">
+                <h1 class="text-4xl font-black text-slate-800 uppercase tracking-tighter italic">Sales Report</h1>
+        <div class="flex items-center gap-3 no-print">
+            <a href="export_reports.php" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-emerald-700 transition-all shadow-lg">
+                <i class="fas fa-file-export mr-2"></i> Export Report
+            </a>
+            <span class="px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest">Live pharmacy overview</span>
+        </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <div class="bg-gradient-to-br from-emerald-500 to-green-600 p-8 rounded-[30px] text-white shadow-xl">
+                    <p class="text-[10px] uppercase tracking-[0.2em] text-emerald-100 font-black">Delivered Revenue</p>
+                    <h2 class="text-4xl font-black mt-4"><?= number_format((float) ($report['total_revenue'] ?? 0), 2) ?> ৳</h2>
                 </div>
-                <div class="bg-slate-900 p-12 rounded-[50px] text-white shadow-2xl relative overflow-hidden">
-                    <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-white/5 rounded-full"></div>
-                    <p class="text-xs font-black uppercase tracking-widest opacity-70">Successful Deliveries</p>
-                    <h2 class="text-6xl font-black mt-4"><?= $report['total_orders'] ?> Orders</h2>
+                <div class="bg-slate-900 p-8 rounded-[30px] text-white shadow-xl">
+                    <p class="text-[10px] uppercase tracking-[0.2em] text-slate-300 font-black">Completed Orders</p>
+                    <h2 class="text-4xl font-black mt-4"><?= (int) ($report['total_orders'] ?? 0) ?></h2>
+                </div>
+                <div class="bg-blue-600 p-8 rounded-[30px] text-white shadow-xl">
+                    <p class="text-[10px] uppercase tracking-[0.2em] text-blue-100 font-black">Average Order</p>
+                    <h2 class="text-4xl font-black mt-4"><?= number_format((float) ($report['avg_order_value'] ?? 0), 2) ?> ৳</h2>
+                </div>
+                <div class="bg-amber-500 p-8 rounded-[30px] text-white shadow-xl">
+                    <p class="text-[10px] uppercase tracking-[0.2em] text-amber-100 font-black">Open Pipeline</p>
+                    <h2 class="text-4xl font-black mt-4"><?= number_format((float) ($pendingOrdersValue['pending_revenue'] ?? 0), 2) ?> ৳</h2>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <div class="bg-white rounded-[35px] border p-8 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter">Monthly sales</h3>
+                        <span class="text-[10px] font-black uppercase text-gray-400">Last 6 months</span>
+                    </div>
+
+                    <?php if (!empty($monthlySales)): ?>
+                        <?php $maxMonthlyRevenue = max(array_map(fn($row) => (float) $row['revenue'], $monthlySales)); ?>
+                        <div class="space-y-5">
+                            <?php foreach ($monthlySales as $sale): ?>
+                                <?php $barWidth = $maxMonthlyRevenue > 0 ? ((float) $sale['revenue'] / $maxMonthlyRevenue) * 100 : 0; ?>
+                                <div>
+                                    <div class="flex justify-between items-center mb-2 text-xs font-bold text-slate-500">
+                                        <span><?= htmlspecialchars($sale['month_label']) ?></span>
+                                        <span><?= number_format((float) $sale['revenue'], 2) ?> ৳</span>
+                                    </div>
+                                    <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                                        <div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500" style="width: <?= $barWidth ?>%;"></div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-sm text-gray-500 font-medium">No delivered sales found yet.</div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="bg-white rounded-[35px] border p-8 shadow-sm">
+                    <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter mb-6">Top medicines sold</h3>
+                    <div class="space-y-4">
+                        <?php if (!empty($topMedicines)): ?>
+                            <?php foreach ($topMedicines as $index => $medicine): ?>
+                                <div class="flex items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white font-black flex items-center justify-center text-sm">
+                                            <?= $index + 1 ?>
+                                        </div>
+                                        <div>
+                                            <p class="font-black text-slate-800"><?= htmlspecialchars($medicine['medicine_name']) ?></p>
+                                            <p class="text-[10px] uppercase tracking-widest text-gray-400 font-bold"><?= (int) $medicine['units_sold'] ?> units sold</p>
+                                        </div>
+                                    </div>
+                                    <span class="font-black text-emerald-600"><?= number_format((float) $medicine['revenue'], 2) ?> ৳</span>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="text-sm text-gray-500 font-medium">No medicine sales data has been recorded yet.</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-[35px] border p-8 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter">Recent completed orders</h3>
+                    <span class="text-[10px] font-black uppercase text-gray-400">Latest 5</span>
+                </div>
+
+                <div class="overflow-hidden rounded-2xl border border-gray-200">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-400 font-black">
+                            <tr>
+                                <th class="p-4">Order</th>
+                                <th class="p-4">Customer</th>
+                                <th class="p-4 text-right">Total</th>
+                                <th class="p-4 text-right">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <?php if (!empty($recentSales)): ?>
+                                <?php foreach ($recentSales as $sale): ?>
+                                    <tr>
+                                        <td class="p-4 font-bold text-slate-800">#<?= $sale['order_id'] ?></td>
+                                        <td class="p-4 text-slate-600"><?= htmlspecialchars($sale['full_name']) ?></td>
+                                        <td class="p-4 text-right font-black text-emerald-600"><?= number_format((float) $sale['total_amount'], 2) ?> ৳</td>
+                                        <td class="p-4 text-right text-slate-500"><?= date('d M Y', strtotime($sale['order_date'])) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="4" class="p-6 text-sm text-gray-500 font-medium">No completed orders found.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="apt-tab" class="content-tab hidden space-y-8">
+            <div class="flex items-center justify-between gap-4">
+                <h1 class="text-4xl font-black text-slate-800 uppercase tracking-tighter italic">Consultation Requests</h1>
+                <span class="px-4 py-2 rounded-full bg-cyan-100 text-cyan-700 text-[10px] font-black uppercase tracking-widest"><?= count($appointments) ?> Total</span>
+            </div>
+
+            <div class="bg-white rounded-[35px] border p-8 shadow-sm">
+                <div class="overflow-hidden rounded-2xl border border-gray-200">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-400 font-black">
+                            <tr>
+                                <th class="p-4">Patient</th>
+                                <th class="p-4">Doctor</th>
+                                <th class="p-4">Schedule</th>
+                                <th class="p-4">Notes</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <?php if (!empty($appointments)): ?>
+                                <?php foreach ($appointments as $appointment): ?>
+                                    <tr>
+                                        <td class="p-4">
+                                            <div class="font-black text-slate-800"><?= htmlspecialchars($appointment['full_name']) ?></div>
+                                            <div class="text-[10px] text-gray-400"><?= htmlspecialchars($appointment['email']) ?></div>
+                                        </td>
+                                        <td class="p-4 font-bold text-slate-700"><?= htmlspecialchars($appointment['doctor_name']) ?></td>
+                                        <td class="p-4 text-slate-600">
+                                            <div class="font-bold"><?= date('d M Y', strtotime($appointment['appointment_date'])) ?></div>
+                                            <div class="text-[10px] text-gray-400"><?= htmlspecialchars($appointment['appointment_time']) ?></div>
+                                        </td>
+                                        <td class="p-4 text-slate-600 max-w-xs">
+                                            <?= !empty($appointment['notes']) ? htmlspecialchars($appointment['notes']) : '<span class="text-gray-400 italic">No notes</span>' ?>
+                                        </td>
+                                        <td class="p-4">
+                                            <?php
+                                                $statusClass = [
+                                                    'Pending' => 'bg-amber-100 text-amber-700',
+                                                    'Approved' => 'bg-blue-100 text-blue-700',
+                                                    'Completed' => 'bg-green-100 text-green-700',
+                                                    'Cancelled' => 'bg-red-100 text-red-700',
+                                                ];
+                                            ?>
+                                            <span class="inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider <?= $statusClass[$appointment['status']] ?? 'bg-gray-100 text-gray-600' ?>">
+                                                <?= htmlspecialchars($appointment['status']) ?>
+                                            </span>
+                                        </td>
+                                        <td class="p-4 text-right">
+                                            <form action="admin_actions.php" method="POST" class="inline-flex items-center gap-2">
+                                                <input type="hidden" name="appointment_id" value="<?= (int) $appointment['appointment_id'] ?>">
+                                                <select name="status" class="bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-[10px] font-black uppercase">
+                                                    <option value="Pending" <?= $appointment['status'] == 'Pending' ? 'selected' : '' ?>>Pending</option>
+                                                    <option value="Approved" <?= $appointment['status'] == 'Approved' ? 'selected' : '' ?>>Approved</option>
+                                                    <option value="Completed" <?= $appointment['status'] == 'Completed' ? 'selected' : '' ?>>Completed</option>
+                                                    <option value="Cancelled" <?= $appointment['status'] == 'Cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                                                </select>
+                                                <button type="submit" name="update_appointment_status" class="bg-slate-900 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase">Update</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="6" class="p-8 text-center text-gray-500 font-medium">No consultation requests found.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="sup-tab" class="content-tab hidden space-y-8">
+            <div class="flex items-center justify-between gap-4">
+                <h1 class="text-4xl font-black text-slate-800 uppercase tracking-tighter italic">Support Tickets</h1>
+                <span class="px-4 py-2 rounded-full bg-violet-100 text-violet-700 text-[10px] font-black uppercase tracking-widest"><?= count($supportTickets) ?> Total</span>
+            </div>
+
+            <div class="bg-white rounded-[35px] border p-8 shadow-sm">
+                <div class="overflow-hidden rounded-2xl border border-gray-200">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-400 font-black">
+                            <tr>
+                                <th class="p-4">Customer</th>
+                                <th class="p-4">Subject</th>
+                                <th class="p-4">Priority</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4">Message</th>
+                                <th class="p-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <?php if (!empty($supportTickets)): ?>
+                                <?php foreach ($supportTickets as $ticket): ?>
+                                    <tr>
+                                        <td class="p-4">
+                                            <div class="font-black text-slate-800"><?= htmlspecialchars($ticket['full_name']) ?></div>
+                                            <div class="text-[10px] text-gray-400"><?= htmlspecialchars($ticket['email']) ?></div>
+                                        </td>
+                                        <td class="p-4 font-bold text-slate-700"><?= htmlspecialchars($ticket['subject']) ?></td>
+                                        <td class="p-4">
+                                            <span class="inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
+                                                <?= $ticket['priority'] === 'High' ? 'bg-red-100 text-red-700' : ($ticket['priority'] === 'Medium' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700') ?>">
+                                                <?= htmlspecialchars($ticket['priority']) ?>
+                                            </span>
+                                        </td>
+                                        <td class="p-4">
+                                            <span class="inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
+                                                <?= $ticket['status'] === 'Open' ? 'bg-sky-100 text-sky-700' : ($ticket['status'] === 'In Progress' ? 'bg-blue-100 text-blue-700' : ($ticket['status'] === 'Resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700')) ?>">
+                                                <?= htmlspecialchars($ticket['status']) ?>
+                                            </span>
+                                        </td>
+                                        <td class="p-4 text-slate-600 max-w-md">
+                                            <?= htmlspecialchars(substr($ticket['message'], 0, 120)) ?><?= strlen($ticket['message']) > 120 ? '...' : '' ?>
+                                        </td>
+                                        <td class="p-4 text-right">
+                                            <form action="admin_actions.php" method="POST" class="inline-flex items-center gap-2">
+                                                <input type="hidden" name="ticket_id" value="<?= (int) $ticket['ticket_id'] ?>">
+                                                <select name="status" class="bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-[10px] font-black uppercase">
+                                                    <option value="Open" <?= $ticket['status'] == 'Open' ? 'selected' : '' ?>>Open</option>
+                                                    <option value="In Progress" <?= $ticket['status'] == 'In Progress' ? 'selected' : '' ?>>In Progress</option>
+                                                    <option value="Resolved" <?= $ticket['status'] == 'Resolved' ? 'selected' : '' ?>>Resolved</option>
+                                                    <option value="Closed" <?= $ticket['status'] == 'Closed' ? 'selected' : '' ?>>Closed</option>
+                                                </select>
+                                                <button type="submit" name="update_support_ticket" class="bg-slate-900 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase">Update</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="6" class="p-8 text-center text-gray-500 font-medium">No support tickets found.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

@@ -5,29 +5,36 @@ if (isset($_POST['login'])) {
     $email = trim($_POST['email']);
     $pass = $_POST['password'];
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch();
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
 
-    if (!$user) {
-        echo "<script>alert('Error: Email not found!'); window.location='admin_login.php';</script>";
-    } else {
-        if (password_verify($pass, $user['password_hash'])) {
-            
-            if (strtolower($user['role']) == 'admin') {
-                $_SESSION['user_id'] = $user['user_id'];
-                $_SESSION['user_name'] = $user['full_name'];
-                $_SESSION['role'] = $user['role'];
-                
-                header("Location: adminpanel.php");
-                exit();
-            } else {
-                echo "<script>alert('Access Denied!'); window.location='admin_login.php';</script>";
-                exit();
-            }
-        } else {
-            echo "<script>alert('Error: Incorrect Password!'); window.location='admin_login.php';</script>";
+        if (!$user) {
+            echo "<script>alert('Error: Email not found!'); window.location='admin_login.php';</script>";
+            exit();
         }
+
+        if (!password_verify($pass, $user['password_hash'])) {
+            echo "<script>alert('Error: Incorrect Password!'); window.location='admin_login.php';</script>";
+            exit();
+        }
+
+        $role = strtolower($user['role']);
+        if ($role !== 'admin') {
+            echo "<script>alert('Access Denied! Please use the patient login portal.'); window.location='index.php';</script>";
+            exit();
+        }
+
+        session_regenerate_id(true);
+        $_SESSION['user_id'] = $user['user_id'];
+        $_SESSION['user_name'] = $user['full_name'];
+        $_SESSION['role'] = $user['role'];
+
+        header("Location: adminpanel.php");
+        exit();
+    } catch (PDOException $e) {
+        die("Login Error: " . $e->getMessage());
     }
 }
 ?>

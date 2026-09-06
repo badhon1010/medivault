@@ -2,16 +2,30 @@
 include 'config.php';
 
 $query = $_GET['query'] ?? '';
+$categoryId = isset($_GET['category_id']) ? (int) $_GET['category_id'] : 0;
 
-// Symptoms Search Query Included
-$sql = "SELECT m.*, SUM(b.quantity_instock) as total_available, 
-        (SELECT AVG(rating) FROM medicine_reviews WHERE medicine_id = m.medicine_id) as avg_rating 
-        FROM medicines m 
-        LEFT JOIN inventory_batches b ON m.medicine_id = b.medicine_id 
-        WHERE m.medicine_name LIKE ? OR m.generic_name LIKE ? OR m.indications LIKE ? 
-        GROUP BY m.medicine_id";
+$sql = "SELECT m.*, SUM(b.quantity_instock) as total_available,
+        (SELECT AVG(rating) FROM medicine_reviews WHERE medicine_id = m.medicine_id) as avg_rating
+        FROM medicines m
+        LEFT JOIN inventory_batches b ON m.medicine_id = b.medicine_id
+        WHERE 1 = 1";
+$params = [];
+
+if ($query !== '') {
+    $sql .= " AND (m.medicine_name LIKE ? OR m.generic_name LIKE ? OR m.indications LIKE ?)";
+    $params[] = "%$query%";
+    $params[] = "%$query%";
+    $params[] = "%$query%";
+}
+
+if ($categoryId > 0) {
+    $sql .= " AND m.category_id = ?";
+    $params[] = $categoryId;
+}
+
+$sql .= " GROUP BY m.medicine_id";
 $stmt = $pdo->prepare($sql);
-$stmt->execute(["%$query%", "%$query%", "%$query%"]);
+$stmt->execute($params);
 $medicines = $stmt->fetchAll();
 
 $batches = $pdo->query("SELECT * FROM inventory_batches WHERE quantity_instock > 0 AND expiry_date >= CURDATE() ORDER BY expiry_date ASC")->fetchAll();
