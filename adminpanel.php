@@ -99,16 +99,12 @@ foreach ($all_batches as $batch) {
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>MediVault Admin | Full Control</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>.active-tab { background: #16a34a !important; font-weight: bold; transform: scale(1.05); }</style>
-</head>
-<body class="bg-gray-100 flex min-h-screen font-sans">
+<?php
+$page_title = 'MediVault Admin | Full Control';
+$extra_head = '<style>.active-tab { background: #16a34a !important; font-weight: bold; transform: scale(1.05); }</style>';
+$body_class = 'bg-gray-100 flex min-h-screen font-sans';
+include 'includes/header.php';
+?>
 
     <div class="w-72 bg-slate-900 p-8 text-white sticky top-0 h-screen shadow-2xl flex flex-col">
         <h2 class="text-3xl font-black italic text-green-400 mb-12 tracking-tighter uppercase text-center">MEDIVAULT</h2>
@@ -839,5 +835,4 @@ foreach ($all_batches as $batch) {
             document.getElementById('editIntModal').classList.remove('hidden');
         }
     </script>
-</body>
-</html>
+<?php include 'includes/footer.php'; ?>

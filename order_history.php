@@ -36,26 +36,14 @@ $stmt->execute([$user_id]);
 $orders = $stmt->fetchAll();
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order History | MediVault</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style> body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; } </style>
-</head>
-<body class="flex flex-col min-h-screen">
-
-    <nav class="bg-white shadow-md sticky top-0 z-50 w-full">
-        <div class="container mx-auto px-4 h-20 flex justify-between items-center">
-            <h2 class="text-2xl font-black text-slate-800 tracking-tight">Medi<span class="text-teal-600">Vault</span></h2>
-            <a href="dashboard.php" class="flex items-center gap-2 text-slate-500 hover:text-teal-600 font-bold text-sm transition-colors">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </a>
-        </div>
-    </nav>
+<?php
+$page_title = 'Order History | MediVault';
+$body_class = 'flex flex-col min-h-screen';
+include 'includes/header.php';
+$show_search = false;
+$show_cart = true;
+include 'includes/navbar.php';
+?>
 
     <div class="container mx-auto px-4 py-10 flex-grow">
         <h1 class="text-3xl font-black text-slate-800 uppercase tracking-tight mb-8">My Orders</h1>
@@ -156,8 +144,4 @@ $orders = $stmt->fetchAll();
         <?php endif; ?>
     </div>
 
-</body>
-</html>
-
-
-
+<?php include 'includes/footer.php'; ?>

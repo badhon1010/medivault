@@ -3,29 +3,14 @@ include 'config.php';
 if (!isset($_SESSION['user_id'])) { header("Location: index.php"); exit(); }
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About Us | MediVault</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .text-arogga { color: #0d9488; }
-        .bg-arogga { background-color: #0d9488; }
-    </style>
-</head>
-<body class="bg-gray-50">
-
-    <nav class="bg-white shadow-md sticky top-0 z-50">
-        <div class="container mx-auto px-4 h-20 flex justify-between items-center">
-            <a href="dashboard.php" class="text-2xl font-bold text-slate-800">Medi<span class="text-arogga">Vault</span></a>
-            <a href="dashboard.php" class="text-sm font-bold text-gray-500 hover:text-arogga">Back to Dashboard</a>
-        </div>
-    </nav>
+<?php
+$page_title = 'About Us | MediVault';
+$body_class = 'bg-gray-50';
+include 'includes/header.php';
+$show_search = false;
+$show_cart = true;
+include 'includes/navbar.php';
+?>
 
     <div class="bg-arogga text-white py-20 text-center">
         <h1 class="text-4xl font-bold mb-4">Empowering Healthcare in Bangladesh</h1>
@@ -65,5 +50,4 @@ if (!isset($_SESSION['user_id'])) { header("Location: index.php"); exit(); }
     <footer class="bg-slate-900 text-slate-400 py-8 text-center text-xs">
         &copy; 2026 MediVault. All rights reserved.
     </footer>
-</body>
-</html>
+<?php include 'includes/footer.php'; ?>

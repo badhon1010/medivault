@@ -23,29 +23,14 @@ $stmt->execute([$user_id]);
 $appointments = $stmt->fetchAll();
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Appointments | MediVault</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .bg-arogga { background-color: #0d9488; }
-        .text-arogga { color: #0d9488; }
-    </style>
-</head>
-<body class="min-h-screen">
-    <nav class="bg-white shadow-md sticky top-0 z-50">
-        <div class="container mx-auto px-4 h-20 flex justify-between items-center">
-            <a href="dashboard.php" class="text-2xl font-black text-slate-800">Medi<span class="text-arogga">Vault</span></a>
-            <a href="book_appointment.php" class="bg-arogga text-white px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md">
-                <i class="fas fa-calendar-plus mr-2"></i>Book New
-            </a>
-        </div>
-    </nav>
+<?php
+$page_title = 'My Appointments | MediVault';
+$body_class = 'min-h-screen';
+include 'includes/header.php';
+$show_search = false;
+$show_cart = true;
+include 'includes/navbar.php';
+?>
 
     <div class="container mx-auto px-4 py-10 max-w-5xl">
         <div class="flex items-end justify-between mb-8 border-b border-gray-200 pb-4">
@@ -53,6 +38,9 @@ $appointments = $stmt->fetchAll();
                 <h1 class="text-3xl font-black text-slate-800 uppercase tracking-tight">My Consultations</h1>
                 <p class="text-sm text-slate-500 mt-1">Track your appointment requests and consultation status.</p>
             </div>
+            <a href="book_appointment.php" class="bg-arogga text-white px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md hover:bg-teal-700 transition-colors">
+                <i class="fas fa-calendar-plus mr-2"></i>Book New
+            </a>
         </div>
 
         <?php if (empty($appointments)): ?>
@@ -110,5 +98,4 @@ $appointments = $stmt->fetchAll();
             </div>
         <?php endif; ?>
     </div>
-</body>
-</html>
+<?php include 'includes/footer.php'; ?>

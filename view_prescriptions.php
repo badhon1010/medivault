@@ -46,39 +46,14 @@ $stmt->execute([$user_id]);
 $prescriptions = $stmt->fetchAll();
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prescription Gallery | MediVault</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .bg-arogga { background-color: #0d9488; }
-        .text-arogga { color: #0d9488; }
-    </style>
-</head>
-<body class="flex flex-col min-h-screen">
-
-    <nav class="bg-white shadow-md sticky top-0 z-50 w-full">
-        <div class="container mx-auto px-4 h-20 flex justify-between items-center">
-            <a href="dashboard.php" class="flex items-center gap-2 group">
-                <div class="bg-arogga text-white p-2 rounded-lg group-hover:rotate-12 transition-transform duration-300">
-                    <i class="fas fa-heartbeat text-xl"></i>
-                </div>
-                <span class="text-2xl font-bold text-slate-800 tracking-tight">Medi<span class="text-arogga">Vault</span></span>
-            </a>
-            
-            <a href="dashboard.php" class="flex items-center gap-2 text-slate-500 hover:text-arogga font-bold text-sm transition-colors">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </a>
-        </div>
-    </nav>
+<?php
+$page_title = 'Prescription Gallery | MediVault';
+$body_class = 'flex flex-col min-h-screen';
+include 'includes/header.php';
+$show_search = false;
+$show_cart = true;
+include 'includes/navbar.php';
+?>
 
     <div class="container mx-auto px-4 py-10 flex-grow">
         
@@ -192,5 +167,4 @@ $prescriptions = $stmt->fetchAll();
         </div>
     </footer>
 
-</body>
-</html>
+<?php include 'includes/footer.php'; ?>

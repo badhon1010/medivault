@@ -7,39 +7,22 @@ if (!isset($_SESSION['user_id'])) {
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support Center | MediVault</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 40%, #ecfeff 100%); }
-        .bg-arogga { background-color: #0d9488; }
-        .text-arogga { color: #0d9488; }
-    </style>
-</head>
-<body class="min-h-screen">
-    <nav class="bg-white shadow-md sticky top-0 z-20">
-        <div class="container mx-auto px-4 h-20 flex items-center justify-between">
-            <a href="dashboard.php" class="flex items-center gap-3">
-                <div class="bg-arogga text-white p-2 rounded-xl"><i class="fas fa-heartbeat"></i></div>
-                <span class="text-2xl font-black text-slate-800">Medi<span class="text-arogga">Vault</span></span>
-            </a>
-            <div class="flex items-center gap-4">
-                <a href="my_support_tickets.php" class="text-sm font-bold text-slate-500 hover:text-arogga">
-                    <i class="fas fa-list mr-2"></i>My Tickets
-                </a>
-                <a href="dashboard.php" class="text-sm font-bold text-slate-500 hover:text-arogga">
-                    <i class="fas fa-arrow-left mr-2"></i>Back
-                </a>
-            </div>
-        </div>
-    </nav>
+<?php
+$page_title = 'Support Center | MediVault';
+$body_class = 'min-h-screen';
+$extra_head = '<style>body { background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 40%, #ecfeff 100%); }</style>';
+include 'includes/header.php';
+$show_search = false;
+$show_cart = true;
+include 'includes/navbar.php';
+?>
 
     <div class="container mx-auto px-4 py-12 max-w-4xl">
+        <div class="flex justify-end mb-4">
+            <a href="my_support_tickets.php" class="bg-arogga text-white px-5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md hover:bg-teal-700 transition-colors">
+                <i class="fas fa-list mr-2"></i>My Tickets
+            </a>
+        </div>
         <div class="bg-white rounded-[36px] shadow-xl border border-slate-100 p-8 md:p-12">
             <div class="mb-8 text-center">
                 <div class="inline-flex items-center justify-center w-16 h-16 bg-violet-100 text-violet-600 rounded-full text-2xl mb-4">
@@ -97,5 +80,4 @@ if (!isset($_SESSION['user_id'])) {
             </form>
         </div>
     </div>
-</body>
-</html>
+<?php include 'includes/footer.php'; ?>

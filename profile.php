@@ -52,30 +52,14 @@ $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile | MediVault</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .bg-arogga { background-color: #0d9488; }
-        .text-arogga { color: #0d9488; }
-    </style>
-</head>
-<body class="flex flex-col min-h-screen">
-
-    <nav class="bg-white shadow-md sticky top-0 z-50 w-full">
-        <div class="container mx-auto px-4 h-20 flex justify-between items-center">
-            <a href="dashboard.php" class="text-2xl font-black text-slate-800 tracking-tight">Medi<span class="text-arogga">Vault</span></a>
-            <a href="dashboard.php" class="flex items-center gap-2 text-slate-500 hover:text-arogga font-bold text-sm transition-colors">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </a>
-        </div>
-    </nav>
+<?php
+$page_title = 'My Profile | MediVault';
+$body_class = 'flex flex-col min-h-screen';
+include 'includes/header.php';
+$show_search = false;
+$show_cart = true;
+include 'includes/navbar.php';
+?>
 
     <div class="container mx-auto px-4 py-10 max-w-4xl">
         
@@ -159,5 +143,4 @@ $user = $stmt->fetch();
 
     </div>
 
-</body>
-</html>
+<?php include 'includes/footer.php'; ?>

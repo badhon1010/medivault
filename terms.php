@@ -3,27 +3,14 @@ include 'config.php';
 if (!isset($_SESSION['user_id'])) { header("Location: index.php"); exit(); }
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terms & Conditions | MediVault</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .text-arogga { color: #0d9488; }
-    </style>
-</head>
-<body class="bg-gray-50">
-
-    <nav class="bg-white shadow-md sticky top-0 z-50">
-        <div class="container mx-auto px-4 h-20 flex justify-between items-center">
-            <a href="dashboard.php" class="text-2xl font-bold text-slate-800">Medi<span class="text-arogga">Vault</span></a>
-            <a href="dashboard.php" class="text-sm font-bold text-gray-500 hover:text-arogga">Back to Dashboard</a>
-        </div>
-    </nav>
+<?php
+$page_title = 'Terms & Conditions | MediVault';
+$body_class = 'bg-gray-50';
+include 'includes/header.php';
+$show_search = false;
+$show_cart = true;
+include 'includes/navbar.php';
+?>
 
     <div class="container mx-auto px-4 py-16 max-w-4xl">
         <div class="bg-white p-10 rounded-[40px] shadow-sm border border-gray-100">
@@ -53,5 +40,4 @@ if (!isset($_SESSION['user_id'])) { header("Location: index.php"); exit(); }
             </div>
         </div>
     </div>
-</body>
-</html>
+<?php include 'includes/footer.php'; ?>

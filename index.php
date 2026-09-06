@@ -62,29 +62,11 @@ if (isset($_POST['login'])) {
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to MediVault</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .bg-arogga { background-color: #0d9488; }
-        .text-arogga { color: #0d9488; }
-        .hover-arogga:hover { background-color: #0f766e; }
-        
-        /* Animation */
-        .fade-in { animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
-</head>
-<body class="bg-gray-50 h-screen w-full overflow-hidden">
+<?php
+$page_title = 'Welcome to MediVault';
+$body_class = 'bg-gray-50 h-screen w-full overflow-hidden';
+include 'includes/header.php';
+?>
 
     <div class="flex h-full w-full">
         
@@ -224,5 +206,4 @@ if (isset($_POST['login'])) {
             }
         }
     </script>
-</body>
-</html>
+<?php include 'includes/footer.php'; ?>
