@@ -3,7 +3,7 @@ session_start();
 $host = 'localhost';
 $db   = 'medivault';
 $user = 'root'; 
-$pass = '1234'; 
+$pass = ''; 
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
