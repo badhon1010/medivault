@@ -20,8 +20,6 @@ $rating = intval($data['rating']);
 $comment = trim($data['comment']);
 
 try {
-    // 3. The "Upsert" Query (Insert or Update)
-    // This works perfectly with the UNIQUE constraint we added in SQL
     $sql = "INSERT INTO medicine_reviews (user_id, medicine_id, rating, comment, created_at) 
             VALUES (?, ?, ?, ?, NOW()) 
             ON DUPLICATE KEY UPDATE 

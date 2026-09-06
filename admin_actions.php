@@ -11,11 +11,9 @@ if (isset($_POST['add_medicine'])) {
         $price = $_POST['unit_price'];
         $min_stock = $_POST['min_stock_level'];
         
-        // New Fields Handling
         $indications = trim($_POST['indications'] ?? '');
         $description = trim($_POST['description'] ?? '');
 
-        // SQL Query Updated
         $sql = "INSERT INTO medicines (medicine_name, generic_name, category_id, unit_price, min_stock_level, indications, description) 
                 VALUES (?, ?, ?, ?, ?, ?, ?)";
         
@@ -31,7 +29,6 @@ if (isset($_POST['add_medicine'])) {
     }
 }
 
-// 2. EDIT MEDICINE
 if (isset($_POST['update_medicine'])) {
     $id = $_POST['medicine_id'];
     $name = trim($_POST['medicine_name']);
@@ -44,7 +41,6 @@ if (isset($_POST['update_medicine'])) {
     }
 }
 
-// 3. EDIT CONFLICT
 if (isset($_POST['update_interaction'])) {
     $id = $_POST['interaction_id'];
     $severity = $_POST['severity'];

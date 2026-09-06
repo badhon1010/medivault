@@ -5,7 +5,6 @@ if (!isset($_SESSION['role']) || strtolower($_SESSION['role']) != 'admin') {
     header("Location: admin_login.php"); exit();
 }
 
-// Data Fetching Queries (Unchanged Logic)
 $inventory = $pdo->query("SELECT m.*, c.category_name, b.total_stock, b.expiry_date 
     FROM medicines m 
     LEFT JOIN categories c ON m.category_id = c.category_id 
